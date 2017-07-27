@@ -1,0 +1,141 @@
+We will imagine we have a flask app that consumes resources from a mongodb database.
+
+The application lists outstanding orders, and allows the creation of new orders.
+
+The orders will be contained in the orders collection in the flask_app database.  We will use Vault
+to control access to this collection.
+
+Configure mongodb:
+===========================================================================================
+mkdir ~/data/flask_app
+
+mongod --port 27017 --dbpath ~/data/flask_app
+or
+docker run --name mongo-server -d mongo -v ~/data/flask-app:/data/db
+===========================================================================================
+
+Connect and add admin user. 
+===========================================================================================
+mongo --port 27017
+or
+docker run -it --link mongo-server:mongo --rm mongo sh -c 'exec mongo "$MONGO_PORT_27017_TCP_ADDR:$MONGO_PORT_27017_TCP_PORT/test"'
+use admin
+db.createUser(
+  {
+    user: "admin_user",
+    pwd: "password",
+    roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
+  }
+)
+===========================================================================================
+
+Create our database and collections, and insert a record to initialize them.
+===========================================================================================
+use flask_app
+db.createCollection('orders')
+db.createCollection('customers')
+db.orders.insert({'created_on':Date()})
+db.customers.insert({'created_on':Date()})
+===========================================================================================
+
+Restart mongodb with auth:
+===========================================================================================
+mongod --port 27017 --dbpath ~/data/flask_app --auth
+===========================================================================================
+
+Add mongodb backend in Vault:
+===========================================================================================
+vault mount mongodb
+===========================================================================================
+
+Mount an audit backend so we have some idea what's going on:
+===========================================================================================
+mkdir -p ~/vault_logs && touch ~/vault_logs/audit.log
+vault audit-enable file file_path=~/vault_logs/audit.log
+===========================================================================================
+
+Tell vault how to connect to mongo:
+===========================================================================================
+vault write mongodb/config/connection uri="mongodb://admin_user:password@127.0.0.1:27017/admin?ssl=false"
+===========================================================================================
+
+Configure lease parameters (must be renewed every minute, and rececyled every hour):
+===========================================================================================
+vault write mongodb/config/lease ttl=1h max_ttl=24h
+===========================================================================================
+
+Create some roles:
+===========================================================================================
+vault write mongodb/roles/readonly db=flask_app roles='[ "read" ]'
+vault write mongodb/roles/write db=flask_app roles='[ "readWrite" ]'
+===========================================================================================
+
+
+
+
+==================
+Steps for Flask App
+
+Restrict access to mongodb database that 
+
+Enable AppRole and configure AppRole within Vault:
+
+Enable the backend:
+===========================================================================================
+vault auth-enable approle
+===========================================================================================
+
+Create policies:
+===========================================================================================
+
+cat <<EOF > flask_app_role_worker_pol.hcl
+path "auth/approle/role/flask_app/secret-id" {
+  capabilities = ["read","create","update"] 
+}
+EOF
+
+cat <<EOF > flask_app_role_provisioner_pol.hcl
+path "auth/approle/role/flask_app/role-id" {
+  capabilities = ['read']
+}
+EOF
+
+
+cat << EOF >flask_app_db_readonly_pol.hcl
+path "mongodb/flask_app/roles/readonly" {
+  capabilities = ['read']
+}
+EOF
+
+cat << EOF >flask_app_db_readwrite_pol.hcl
+path "mongodb/flask_app/roles/write" {
+  capabilities = ['read']
+}
+EOF
+
+===========================================================================================
+
+Create the approle:
+vault write auth/approle/role/flask_app secret_id_ttl=10m \
+token_num_uses=10 token_ttl=20m \
+token_max_ttl=30m secret_id_num_uses=40
+
+Retrieve the role_id:
+vault read auth/approle/role/flaskapp/role-id
+
+Get a SecretID issued against the AppRole:
+vault write -f auth/approle/role/flaskapp/secret-id
+
+Set up policies:
+
+path 
+
+
+
+**********
+scratch
+Need to set a policy limiting access to the secret-id
+Need to set a policy limiting access to the role-id
+Need to somehow pin access to the mongo secret path to someone who has authed through the approle gate
+
+
