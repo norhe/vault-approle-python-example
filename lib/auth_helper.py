@@ -1,6 +1,5 @@
 import hvac
 import os
-import file
 from config_helper import get_option
 
 # this is bad practice as it could be dumped from memory.  Should
@@ -8,28 +7,28 @@ from config_helper import get_option
 # that's built in.
 token = None
 secret_id = None
-client = None
+client = None # not sure if we should keep a reference to this or not
 
 def get_vault_client():
-    if client and client.is_authenticated():
+    if not client:
+        auth_to_vault()
+    elif client and client.is_authenticated():
         try:
-            client.read('fake/path/test')
+            client.read('fake/path/test') # test that we are still authed
             return client
-        except InvalidRequest:
-            # TODO: plumb in consul here
-            vault_addr = get_option('vault_addr')
-            vault_port = get_option('vault_port')
+        except InvalidRequest: # we are not longer authed
+            auth_to_vault()
 
-            if not vault_port or not vault_addr:
-                raise Exception('Please provide values for vault_addr and vault_port in the config.ini.')
+def auth_to_vault():
+    # TODO: plumb in consul here
+    vault_addr = get_option('vault','vault_addr')
+    vault_port = get_option('vault','vault_port')
 
-            client = hvac.Client(url=vault_addr + ':' + vault_port)
-            get_token(client)
-            return client
+    if not vault_port or not vault_addr:
+        raise Exception('Please provide values for vault_addr and vault_port in the config.ini.')
 
-
-
-
+    client = hvac.Client(url=vault_addr + ':' + vault_port)
+    get_token()
 
 # assumes appId was written to path by provisioner
 def read_id_disk(path):
@@ -47,7 +46,7 @@ def read_id_env(key):
 
 # precedence: options -> disk -> env
 def get_role_id():
-    role_id = get_option('vault_role_id')
+    role_id = get_option('vault', 'vault_role_id')
     if not role_id:
         role_id = read_id_disk('/var/role_id') # this could come from config, or be hardcoded for some obscurity
         if not role_id:
@@ -57,7 +56,7 @@ def get_role_id():
     return role_id
 
 def get_secret_id():
-    secret_id = get_option('vault_secret_id')
+    secret_id = get_option('vault','vault_secret_id')
     if not secret_id:
         secret_id = read_id_disk('/var/secret_id') # this could come from config, or be hardcoded for some obscurity
         if not secret_id:
@@ -67,7 +66,7 @@ def get_secret_id():
     return secret_id
 
 # This is meant to interact with the approle backend
-def get_token(client):
+def get_token():
     try:
         role_id = get_role_id()
         secret_id = get_secret_id(client)

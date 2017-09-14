@@ -1,6 +1,7 @@
 from ConfigParser import SafeConfigParser
 
-def get_option(option_name):
+def get_option(section, option_name):
     parser = SafeConfigParser()
     parser.read('../config.ini')
-    return parser.get(option_name)
+    print parser.sections()
+    return parser.get(section, option_name)
