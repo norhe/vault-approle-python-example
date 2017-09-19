@@ -1,3 +1,5 @@
 ubuntu-xen*
-.vagran
+.vagran*
 *.pyc
+config.ini
+.idea/

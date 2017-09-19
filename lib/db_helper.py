@@ -10,12 +10,13 @@ from auth_helper import get_vault_client
 
 db_client = None
 
+
 def init_db_client(uname, pword):
     global db_client
     if db_client is None:
         # plumb in consul
-        db_url = get_option('db, ''db_url')
-        db_port = int(get_option('db', 'db_port'))
+        db_url = get_option('db', 'url')
+        db_port = int(get_option('db', 'port'))
 
         if not db_url or not db_port:
             print "Please provide values for db_url and/or db_port in the config.ini"
@@ -34,7 +35,7 @@ def init_db_client(uname, pword):
 def auth_db():
     vault_client = get_vault_client()
     # Get vault path from Consul?
-    resp = vault_client.read('/mongdb/creds/readonly')
+    resp = vault_client.read('/mongodb/creds/readonly')
     if resp and resp['data']:
         uname = resp['data']['username']
         pword = resp['data']['password']
@@ -46,6 +47,7 @@ def auth_db():
             print 'Did not get username or password!'
 
     #db_client.auth()
+
 
 # If we hav
 def get_orders():

@@ -7,6 +7,8 @@ to control access to this collection.
 
 Configure mongodb:
 ===========================================================================================
+sudo apt-get install mongodb
+
 mkdir ~/data/flask_app
 
 mongod --port 27017 --dbpath ~/data/flask_app
@@ -14,7 +16,7 @@ or
 docker run --name mongo-server -d mongo -v ~/data/flask-app:/data/db
 ===========================================================================================
 
-Connect and add admin user. 
+Connect and add admin user.
 ===========================================================================================
 mongo --port 27017
 or
@@ -59,12 +61,12 @@ Tell vault how to connect to mongo:
 vault write mongodb/config/connection uri="mongodb://admin_user:password@127.0.0.1:27017/admin?ssl=false"
 ===========================================================================================
 
-Configure lease parameters (must be renewed every minute, and rececyled every hour):
+Configure lease parameters (must be renewed every hour, and recycled every day):
 ===========================================================================================
 vault write mongodb/config/lease ttl=1h max_ttl=24h
 ===========================================================================================
 
-Create some roles:
+Create some roles:hour
 ===========================================================================================
 vault write mongodb/roles/readonly db=flask_app roles='[ "read" ]'
 vault write mongodb/roles/write db=flask_app roles='[ "readWrite" ]'
@@ -76,7 +78,7 @@ vault write mongodb/roles/write db=flask_app roles='[ "readWrite" ]'
 ==================
 Steps for Flask App
 
-Restrict access to mongodb database that 
+Restrict access to mongodb database that
 
 Enable AppRole and configure AppRole within Vault:
 
@@ -90,7 +92,7 @@ Create policies:
 
 cat <<EOF > flask_app_role_worker_pol.hcl
 path "auth/approle/role/flask_app/secret-id" {
-  capabilities = ["read","create","update"] 
+  capabilities = ["read","create","update"]
 }
 EOF
 
@@ -116,20 +118,17 @@ EOF
 ===========================================================================================
 
 Create the approle:
-vault write auth/approle/role/flask_app secret_id_ttl=10m \
-token_num_uses=10 token_ttl=20m \
-token_max_ttl=30m secret_id_num_uses=40
+# The idea is a long lived app.  Secret_id does not expire,
+# and the token does get renewed periodically
+vault write auth/approle/role/flask_app secret_id_ttl=0 \
+ token_num_uses=1 token_ttl=61m \
+ token_max_ttl=61m  secret_id_num_uses=0
 
 Retrieve the role_id:
 vault read auth/approle/role/flaskapp/role-id
 
 Get a SecretID issued against the AppRole:
-vault write -f auth/approle/role/flaskapp/secret-id
-
-Set up policies:
-
-path 
-
+vault write -f auth/approle/role/flask_app/secret-id
 
 
 **********
@@ -138,4 +137,6 @@ Need to set a policy limiting access to the secret-id
 Need to set a policy limiting access to the role-id
 Need to somehow pin access to the mongo secret path to someone who has authed through the approle gate
 
-
+start app by terraform remote provisioner writing config file that contains the approleid and secret_id_ttl,
+then executing the app.  App reads in IDs from the config file. Last step in the provisioner is to
+delete the config file.

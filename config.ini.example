@@ -1,0 +1,24 @@
+# Do not quote strings or numbers
+# For options that should not have a value you
+# must use None.  Note the capital N
+
+[db]
+url = 127.0.0.1
+port = 27017
+name = flask_app
+orders_collection = orders
+customers_collection = customers
+
+[vault]
+url = http://127.0.0.1
+port = 8200
+#role_id = 2cbc0f1d-ce68-f671-7e45-6de8195dead1
+secret_path = auth/approle/role/flask_app/writer
+#secret_id = 00c7c35c-df5d-bfc2-49eb-7670cc6ed091
+role_id_disk_path = /var/role-id
+secret_id_disk_path = /var/secret-id
+#role_id_env = VAULT_ROLE_ID
+#secret_id_env = VAULT_SECRET_ID
+
+[consul]
+use_consul = False
