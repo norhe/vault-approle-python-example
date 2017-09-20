@@ -5,3 +5,4 @@ config.ini
 .idea/
 Vagrantfile
 scripts/
+/scratch.txt

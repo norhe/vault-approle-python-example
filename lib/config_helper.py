@@ -10,7 +10,7 @@ def load_config():
         global parser
         global use_consul
         parser.read('config.ini')
-        use_consul = bool(parser.get('consul', 'use_consul'))
+        use_consul = parser.getboolean('consul', 'use_consul')
         print "we should use Consul: " + str(use_consul)
     except Exception as ex:
         print ex
