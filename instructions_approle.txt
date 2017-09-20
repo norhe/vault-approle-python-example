@@ -1,20 +1,25 @@
-We will imagine we have a flask app that consumes resources from a mongodb database.
+We will imagine we have a simple Python application that consumes resources from a Mongo database, and presents an API.
 
-The application lists outstanding orders, and allows the creation of new orders.
+The records will be contained in the orders collection in the flask_app database.  We will use Vault
+to control access to this resource.
 
-The orders will be contained in the orders collection in the flask_app database.  We will use Vault
-to control access to this collection.
-
-Configure mongodb:
+Install and configure mongodb:
 ===========================================================================================
-sudo apt-get install mongodb
-
 mkdir ~/data/flask_app
 
+sudo apt-get install mongodb
 mongod --port 27017 --dbpath ~/data/flask_app
+
 or
+
 docker run --name mongo-server -d mongo -v ~/data/flask-app:/data/db
 ===========================================================================================
+
+
+We need to add a user who can create other users.  We have chosen to use a very permissive role
+within Mongo, but you can certainly further limit the access Vault has to the server by choosing
+more restrictive roles.  Please see (https://docs.mongodb.com/manual/reference/built-in-roles/#userAdminAnyDatabase)
+for more information.
 
 Connect and add admin user.
 ===========================================================================================

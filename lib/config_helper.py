@@ -1,13 +1,39 @@
 from ConfigParser import SafeConfigParser
+import threading
 
-# assumes config.ini is in the same directory as config_helper.py
-def get_option(section, option_name):
-    parser = SafeConfigParser()
-    parser.read('config.ini')
-    print parser.sections()
+parser = SafeConfigParser()
+use_consul = False
+
+
+def load_config():
     try:
-        print section + str(parser.options(section))
+        global parser
+        global use_consul
+        parser.read('config.ini')
+        use_consul = parser.get('consul', 'use_consul')
+    except Exception as ex:
+        print ex
+    finally:
+        threading.Timer(15, load_config).start()
+
+
+def get_option(section, option_name):
+    if use_consul:
+        return _get_option_consul(section, option_name)
+    else:
+        return _get_option_file(section, option_name)
+
+
+def _get_option_file(section, option_name):
+    try:
+        global parser
         return parser.get(section, option_name)
     except Exception as ex:
-        #print ex.message
         print ex
+
+
+def _get_option_consul(section, option_name):
+    return "Not implemented"
+
+
+load_config()

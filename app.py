@@ -12,7 +12,6 @@ def hello():
 
 @app.route("/get_orders")
 def get_orders():
-    print "In get_orders"
     return db_helper.get_orders()
 
 
