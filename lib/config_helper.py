@@ -10,11 +10,15 @@ def load_config():
         global parser
         global use_consul
         parser.read('config.ini')
-        use_consul = parser.get('consul', 'use_consul')
+        use_consul = bool(parser.get('consul', 'use_consul'))
+        print "we should use Consul: " + str(use_consul)
     except Exception as ex:
         print ex
     finally:
-        threading.Timer(15, load_config).start()
+        # reload the config every 15 seconds
+        t = threading.Timer(15, load_config)
+        t.setDaemon(True)
+        t.start()
 
 
 def get_option(section, option_name):
