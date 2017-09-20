@@ -3,3 +3,5 @@ ubuntu-xen*
 *.pyc
 config.ini
 .idea/
+Vagrantfile
+scripts/
